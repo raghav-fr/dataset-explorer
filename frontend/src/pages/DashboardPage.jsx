@@ -1,0 +1,177 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Loader2, Sparkles, RefreshCcw } from "lucide-react";
+import { useDataset } from "../context/DatasetContext.jsx";
+import { getEDA, getExecutiveSummary } from "../api/client.js";
+import ChartCard from "../components/ChartCard.jsx";
+import StatTile from "../components/StatTile.jsx";
+
+export default function DashboardPage() {
+  const { dataset, eda, setEda, summary, setSummary } = useDataset();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(!eda || !summary);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!dataset) {
+      navigate("/");
+      return;
+    }
+
+    if (eda && summary) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const [edaResult, summaryResult] = await Promise.all([
+          getEDA(dataset.dataset_id, true),
+          getExecutiveSummary(dataset.dataset_id),
+        ]);
+        if (!cancelled) {
+          setEda(edaResult);
+          setSummary(summaryResult.executive_summary);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.response?.data?.detail || "Failed to run EDA.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [dataset, eda, summary, navigate, setEda, setSummary]);
+
+  if (!dataset) return null;
+
+  return (
+    <div className="p-8 max-w-6xl mx-auto">
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-widest text-amber-400 mb-1">
+            Step 2 of 3
+          </p>
+          <h1 className="text-2xl font-semibold">{dataset.filename}</h1>
+          <p className="text-ink-300 text-sm mt-1">
+            {dataset.rows.toLocaleString()} rows &middot; {dataset.columns} columns
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            setEda(null);
+            setSummary(null);
+          }}
+          className="flex items-center gap-2 text-xs text-ink-300 hover:text-ink-100 border border-line rounded-md px-3 py-1.5"
+        >
+          <RefreshCcw size={13} /> Re-run
+        </button>
+      </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 text-ink-300 text-sm py-12 justify-center">
+          <Loader2 className="animate-spin" size={18} />
+          Running EDA and generating AI insights&hellip; this can take a
+          minute for large datasets.
+        </div>
+      )}
+
+      {error && (
+        <div className="text-sm text-red-400 bg-red-950/40 border border-red-900 rounded-md px-3 py-2 mb-6">
+          {error}
+        </div>
+      )}
+
+      {!loading && eda && (
+        <div className="space-y-8">
+          {summary && (
+            <div className="bg-panel border border-amber-400/30 rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles size={16} className="text-amber-400" />
+                <p className="text-sm font-medium">Executive summary</p>
+              </div>
+              <p className="text-sm text-ink-300 leading-relaxed">{summary}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <StatTile label="Rows" value={eda.summary.rows.toLocaleString()} />
+            <StatTile label="Columns" value={eda.summary.columns} />
+            <StatTile
+              label="Memory"
+              value={`${eda.summary.memory_mb} MB`}
+            />
+            <StatTile
+              label="Missing values"
+              value={eda.summary.missing_values_total.toLocaleString()}
+              accent={eda.summary.missing_values_total > 0}
+            />
+            <StatTile
+              label="Duplicate rows"
+              value={eda.summary.duplicate_rows.toLocaleString()}
+              accent={eda.summary.duplicate_rows > 0}
+            />
+          </div>
+
+          {eda.correlation && (
+            <section>
+              <h2 className="text-sm font-semibold text-ink-100 mb-3 uppercase tracking-wide">
+                Correlation
+              </h2>
+              <ChartCard
+                chart={eda.correlation}
+                aiInsight={eda.correlation_insight}
+                height={420}
+              />
+            </section>
+          )}
+
+          {eda.numerical_columns.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-ink-100 mb-3 uppercase tracking-wide">
+                Numerical columns
+              </h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {eda.numerical_columns.map((col) => (
+                  <ChartCard
+                    key={col.name}
+                    title={col.name}
+                    chart={col.chart}
+                    aiInsight={col.ai_insight}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {eda.categorical_columns.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-ink-100 mb-3 uppercase tracking-wide">
+                Categorical columns
+              </h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {eda.categorical_columns.map((col) => (
+                  <ChartCard
+                    key={col.name}
+                    title={col.name}
+                    chart={col.chart}
+                    aiInsight={col.ai_insight}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

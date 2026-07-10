@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# Env
+.env
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Data
+backend/app/storage/datasets/*.parquet
+backend/app/storage/reports/*
+
+# OS
+.DS_Store
