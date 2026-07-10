@@ -1,384 +1,407 @@
-# 🚀 AI Dataset Explorer
+# 📊 AI Dataset Explorer
 
-> **An AI-powered data analysis platform that automatically performs Exploratory Data Analysis (EDA), generates intelligent insights, and enables natural language interaction with datasets using Retrieval-Augmented Generation (RAG).**
+<div align="center">
 
-AI Dataset Explorer transforms raw datasets into meaningful insights with minimal effort. Simply upload a dataset, and the platform automatically cleans the data, performs comprehensive EDA, generates interactive visualizations, explains the findings using AI, and allows users to chat with their data using a RAG-powered assistant.
+# Explore, Analyze and Chat with Your Data Using AI
+
+An intelligent dataset analysis platform built with **React**, **FastAPI**, **Gemini AI**, and **Qdrant** that automatically cleans datasets, performs Exploratory Data Analysis (EDA), generates AI-powered insights, and enables Retrieval-Augmented Generation (RAG) based conversations with your uploaded data.
+
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi)
+![React](https://img.shields.io/badge/React-Frontend-61DAFB?logo=react)
+![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-v4-38B2AC?logo=tailwindcss)
+![Gemini AI](https://img.shields.io/badge/Gemini-AI-blueviolet)
+![Qdrant](https://img.shields.io/badge/Qdrant-VectorDB-red)
+
+</div>
 
 ---
 
-## ✨ Features
+# 📖 Overview
 
-### 📂 Dataset Upload
+AI Dataset Explorer is a full-stack intelligent data analysis platform that simplifies the process of understanding datasets through automation and Artificial Intelligence.
 
-* Upload CSV, Excel, JSON, or Parquet datasets
-* Automatic encoding and delimiter detection
-* Intelligent data type inference
-* Secure dataset storage with unique dataset IDs
+Users can upload CSV datasets, automatically clean and preprocess them, generate comprehensive exploratory data analysis (EDA), visualize statistical patterns, receive AI-generated insights for every chart, and interact with their data through a conversational interface powered by Retrieval-Augmented Generation (RAG).
 
-### 🧹 Automatic Data Cleaning
+Instead of manually writing analysis code, users receive an interactive dashboard containing descriptive statistics, missing value analysis, feature distributions, correlations, outlier detection, AI explanations, and natural language querying capabilities.
 
-* Missing value analysis
-* Duplicate row detection and removal
-* Constant column detection
-* Datetime parsing
-* Numeric type optimization
-* Data quality summary
+The project combines traditional data science with modern Large Language Models to create an intelligent analytics assistant.
 
-### 📊 Automated Exploratory Data Analysis
+---
 
-Automatically generates:
+# ✨ Features
 
-* Dataset overview
-* Statistical summaries
-* Missing value analysis
-* Distribution analysis
-* Correlation analysis
-* Outlier detection
-* Numerical and categorical feature analysis
-* Interactive Plotly visualizations
+* 📂 Upload CSV datasets
+* 🧹 Automatic dataset preprocessing
+* 🧠 Intelligent missing value detection
+* 📊 Automatic Exploratory Data Analysis
+* 📈 Interactive visualizations
+* 📉 Correlation heatmaps
+* 📦 Distribution analysis
+* 🔥 Outlier detection
+* 📋 Descriptive statistics
+* 🤖 Gemini AI generated insights
+* 🧠 AI explanation for every visualization
+* 🔎 Automatic feature analysis
+* 🗂 Dataset indexing using Qdrant
+* 💬 RAG-based conversational chat
+* ⚡ FastAPI backend
+* 🎨 Modern React + Tailwind interface
+* 🚀 High-performance architecture
 
-### 🤖 AI-Powered Insights
+---
 
-Every visualization is accompanied by AI-generated explanations using Gemini.
+# 🛠 Tech Stack
 
-Examples include:
-
-* Distribution interpretation
-* Correlation analysis
-* Trend explanations
-* Business insights
-* Executive summaries
-* Data quality recommendations
-
-### 🧠 Retrieval-Augmented Generation (RAG)
-
-After analysis, the dataset is converted into semantic knowledge chunks and indexed inside Qdrant.
-
-Users can ask questions such as:
-
-* Which department has the highest salary?
-* Explain this dataset.
-* Which features are highly correlated?
-* What preprocessing should I perform?
-* What are the key insights?
-
-The AI retrieves the most relevant dataset context before generating responses, reducing hallucinations and improving accuracy.
+| Technology          | Purpose             |
+| ------------------- | ------------------- |
+| React               | Frontend            |
+| Tailwind CSS        | UI Styling          |
+| FastAPI             | Backend API         |
+| Python              | Backend Development |
+| Pandas              | Data Processing     |
+| NumPy               | Numerical Computing |
+| Plotly              | Interactive Charts  |
+| Matplotlib          | Visualizations      |
+| Seaborn             | Statistical Graphs  |
+| Gemini AI           | AI Insights         |
+| LangChain           | RAG Pipeline        |
+| Qdrant              | Vector Database     |
+| Sentence Embeddings | Semantic Search     |
 
 ---
 
 # 🏗 System Architecture
 
 ```text
-                    Upload Dataset
-                           │
-                           ▼
-                 Dataset Validation
-                           │
-                           ▼
-                 Data Preprocessing
-                           │
-                           ▼
-                 Automatic EDA Engine
-         ┌─────────────────┼──────────────────┐
-         ▼                 ▼                  ▼
-   Statistics        Visualizations      Correlation
-                           │
-                           ▼
-                AI Insight Generation
-                           │
-                           ▼
-              Dataset Chunk Generation
-                           │
-                           ▼
-                 Embedding Generation
-                           │
-                           ▼
-                 Qdrant Vector Database
-                           │
-                           ▼
-                  AI Dataset Chat (RAG)
+                    User
+                      │
+                      ▼
+               React Frontend
+                      │
+                      ▼
+                FastAPI Backend
+                      │
+      ┌───────────────┼────────────────┐
+      │               │                │
+      ▼               ▼                ▼
+ Data Cleaning   Auto EDA Engine   AI Insight Engine
+      │               │                │
+      └───────────────┼────────────────┘
+                      ▼
+            Embedding Generation
+                      │
+                      ▼
+                Qdrant Vector DB
+                      │
+                      ▼
+               Gemini RAG Chat
 ```
 
 ---
 
-# 🛠 Tech Stack
+# 🚀 Workflow
 
-## Frontend
-
-* React
-* Tailwind CSS
-* Plotly
-* Axios
-
-## Backend
-
-* FastAPI
-* Pandas
-* NumPy
-* Scikit-learn
-* Pydantic
-
-## AI
-
-* Google Gemini
-* LangChain
-* Gemini Embeddings
-
-## Vector Database
-
-* Qdrant
-
-## Data Storage
-
-* Local Parquet Storage
-
-## Deployment
-
-* Docker
-* Docker Compose
+```text
+Upload Dataset
+        │
+        ▼
+Dataset Cleaning
+        │
+        ▼
+Automatic EDA
+        │
+        ▼
+Generate Charts
+        │
+        ▼
+Gemini AI Insights
+        │
+        ▼
+Embedding Generation
+        │
+        ▼
+Qdrant Indexing
+        │
+        ▼
+Conversational RAG Chat
+```
 
 ---
 
-# 📁 Project Structure
+# 📂 Project Structure
 
 ```text
-AI-Dataset-Explorer/
+dataset-explorer/
 
-├── backend/
-│   ├── app/
-│   │   ├── routers/
-│   │   ├── services/
-│   │   ├── models/
-│   │   ├── config.py
-│   │   └── main.py
-│   │
-│   ├── uploaded_datasets/
-│   ├── requirements.txt
-│   └── .env.example
-│
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/
-│   │   ├── components/
-│   │   ├── context/
-│   │   └── api/
-│   │
-│   ├── package.json
-│   └── vite.config.js
+│   ├── public/
+│   └── components/
 │
-├── docker-compose.yml
-├── README.md
-└── LICENSE
+├── backend/
+│   ├── app/
+│   ├── api/
+│   ├── services/
+│   ├── models/
+│   ├── utils/
+│   └── main.py
+│
+├── uploads/
+├── vector_db/
+├── requirements.txt
+├── package.json
+└── README.md
 ```
 
 ---
 
-# ⚙ Installation
+# 🧠 AI Capabilities
 
-## Clone the Repository
+The application leverages Google's Gemini model to generate intelligent explanations for every visualization and statistical result.
+
+AI capabilities include:
+
+* Automatic chart interpretation
+* Statistical reasoning
+* Trend analysis
+* Pattern discovery
+* Feature importance explanation
+* Data quality assessment
+* Correlation interpretation
+* Natural language dataset exploration
+
+---
+
+# 📊 Automatic Exploratory Data Analysis
+
+The system automatically performs:
+
+* Dataset overview
+* Missing value analysis
+* Duplicate detection
+* Constant feature detection
+* High-cardinality feature detection
+* Numerical feature analysis
+* Categorical feature analysis
+* Correlation matrix
+* Distribution plots
+* Box plots
+* Histograms
+* Pairwise analysis
+* Outlier detection
+* Target feature analysis (if available)
+
+---
+
+# 💬 Retrieval-Augmented Generation (RAG)
+
+After analysis, every dataset is converted into semantic embeddings and indexed using **Qdrant**.
+
+Users can ask questions such as:
+
+* Which feature has the strongest correlation?
+* What are the missing values?
+* Explain the outliers.
+* Which category appears most frequently?
+* Summarize this dataset.
+* What insights can be drawn from the visualizations?
+
+The chatbot retrieves the most relevant context before generating an AI response, ensuring grounded and dataset-specific answers.
+
+---
+
+# 🚀 Getting Started
+
+## Prerequisites
+
+Before running the project, install:
+
+* Python 3.11+
+* Node.js
+* npm
+* Git
+
+---
+
+## Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/AI-Dataset-Explorer.git
+git clone https://github.com/raghav-fr/dataset-explorer.git
+```
 
-cd AI-Dataset-Explorer
+Navigate into the project
+
+```bash
+cd dataset-explorer
 ```
 
 ---
 
-## Docker Setup (Recommended)
+## Backend Setup
+
+Create virtual environment
 
 ```bash
-cd backend
-
-cp .env.example .env
-```
-
-Add your Gemini API key.
-
-```text
-GEMINI_API_KEY=YOUR_API_KEY
-```
-
-Run the application.
-
-```bash
-docker compose up --build
-```
-
-### Services
-
-| Service          | URL                             |
-| ---------------- | ------------------------------- |
-| Frontend         | http://localhost:5173           |
-| Backend          | http://localhost:8000           |
-| Swagger Docs     | http://localhost:8000/docs      |
-| Qdrant Dashboard | http://localhost:6333/dashboard |
-
----
-
-## Manual Setup
-
-### Backend
-
-```bash
-cd backend
-
 python -m venv venv
+```
 
-source venv/bin/activate
-# Windows:
+Activate environment
+
+### Windows
+
+```bash
 venv\Scripts\activate
+```
 
+### Linux / macOS
+
+```bash
+source venv/bin/activate
+```
+
+Install dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
+Start backend
+
+```bash
 uvicorn app.main:app --reload
 ```
 
-### Frontend
+---
+
+## Frontend Setup
+
+Navigate to frontend
 
 ```bash
 cd frontend
+```
 
+Install dependencies
+
+```bash
 npm install
+```
 
+Run React application
+
+```bash
 npm run dev
 ```
 
 ---
 
-# 🚀 API Workflow
+# 📦 Main Technologies
 
-### 1. Upload Dataset
-
-```
-POST /api/dataset/upload
-```
-
-Uploads and preprocesses a dataset.
-
----
-
-### 2. Generate EDA
-
-```
-GET /api/dataset/{dataset_id}/eda
-```
-
-Creates statistical summaries, visualizations, and AI-generated insights.
+* React
+* Tailwind CSS
+* FastAPI
+* Python
+* Pandas
+* NumPy
+* Plotly
+* Matplotlib
+* Seaborn
+* LangChain
+* Gemini AI
+* Qdrant
+* Sentence Embeddings
 
 ---
 
-### 3. Build Vector Index
+# 🌟 Highlights
 
-```
-POST /api/dataset/{dataset_id}/index
-```
-
-Creates semantic embeddings and stores them in Qdrant.
-
----
-
-### 4. Chat with Dataset
-
-```
-POST /api/dataset/chat
-```
-
-Answers natural language questions using Retrieval-Augmented Generation.
-
----
-
-# 💡 Example Questions
-
-* Explain this dataset.
-* What are the important columns?
-* Which feature has the highest variance?
-* Find missing values.
-* Which columns are highly correlated?
-* Detect outliers.
-* Summarize customer behavior.
-* Which department has the highest average salary?
-* Suggest preprocessing techniques.
-* What machine learning algorithm should I use?
-
----
-
-# 📈 Current Features
-
-* Dataset upload
-* Automatic preprocessing
+* AI-Powered Data Analysis
 * Automatic EDA
-* Interactive visualizations
-* AI-generated chart explanations
-* Dataset executive summaries
-* Gemini-powered insights
-* RAG-based dataset chat
-* Qdrant vector search
-* Swagger API documentation
+* Interactive Dashboard
+* AI Insights
+* Dataset Chatbot
+* Retrieval-Augmented Generation
+* Vector Database Integration
+* Modern Responsive Interface
+* Modular Architecture
+* Scalable Backend
 
 ---
 
-# 🚧 Roadmap
-
-## Phase 2
-
-* AutoML model recommendation
-* Model training
-* Feature importance
-* SHAP explainability
-* Model evaluation metrics
-
-## Phase 3
-
-* Multi-agent architecture
-* Pandas Agent
-* Visualization Agent
-* ML Agent
-* Data Cleaning Agent
-
-## Phase 4
+# 🚀 Future Enhancements
 
 * PDF report generation
-* HTML reports
-* Markdown export
-* Dataset comparison
-* Data drift detection
-
-## Phase 5
-
+* Excel and JSON support
+* Dashboard export
 * User authentication
-* Workspace management
-* Background task processing
-* Dask integration
-* CI/CD pipeline
+* Project management
+* Dataset versioning
+* Team collaboration
+* Multiple LLM support
+* Real-time analytics
 * Cloud deployment
-* Unit and integration testing
+* AutoML integration
+* Predictive analytics
 
 ---
 
-# ⚠ Current Limitations
+# 🤝 Contributing
 
-* Local Parquet storage (single-user focused)
-* Sampling is used for very large datasets during embedding generation
-* Authentication is not implemented yet
-* Large Plotly bundle size can be optimized with lazy loading
+Contributions are welcome.
 
----
+1. Fork the repository.
 
-# 🎯 Future Vision
+2. Create a feature branch.
 
-AI Dataset Explorer aims to become an intelligent AI Data Analyst capable of understanding datasets, generating insights, recommending preprocessing strategies, training machine learning models, explaining predictions, and interacting with users through natural language conversations—all from a single unified platform.
+```bash
+git checkout -b feature-name
+```
 
----
+3. Commit your changes.
 
-# 📜 License
+```bash
+git commit -m "Add new feature"
+```
 
-This project is licensed under the MIT License.
+4. Push the branch.
+
+```bash
+git push origin feature-name
+```
+
+5. Open a Pull Request.
 
 ---
 
 # 👨‍💻 Author
 
-**Khageswar Deheri**
+**Raghav**
 
-If you found this project useful, consider giving it a ⭐ to support the project and future development.
+GitHub: https://github.com/raghav-fr
+
+---
+
+# 📄 License
+
+This project is licensed under the **MIT License**.
+
+You are free to use, modify, and distribute this project under the terms of the license.
+
+---
+
+# ⭐ Support
+
+If you found this project useful, consider giving it a ⭐ on GitHub.
+
+Your support helps improve the project and motivates future development.
+
+---
+
+<div align="center">
+
+### Built with ❤️ using React, FastAPI, Gemini AI & Qdrant
+
+**Turning Raw Data into Intelligent Insights 🚀**
+
+</div>
