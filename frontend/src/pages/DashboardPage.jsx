@@ -54,6 +54,13 @@ export default function DashboardPage() {
 
   if (!dataset) return null;
 
+  const customAnalyses = eda?.custom_analyses || [];
+  const bivariateAnalyses = customAnalyses.filter((a) => a.type === "bivariate");
+  const multivariateAnalyses = customAnalyses.filter((a) => a.type === "multivariate");
+  const otherCustomAnalyses = customAnalyses.filter(
+    (a) => a.type !== "bivariate" && a.type !== "multivariate"
+  );
+
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <div className="flex items-start justify-between mb-6">
@@ -165,6 +172,63 @@ export default function DashboardPage() {
                     title={col.name}
                     chart={col.chart}
                     aiInsight={col.ai_insight}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {bivariateAnalyses.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-ink-100 mb-3 uppercase tracking-wide">
+                Bivariate Analysis
+              </h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {bivariateAnalyses.map((analysis, idx) => (
+                  <ChartCard
+                    key={idx}
+                    title={analysis.title}
+                    subtitle={analysis.reasoning}
+                    chart={analysis.chart}
+                    aiInsight={analysis.ai_insight}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {multivariateAnalyses.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-ink-100 mb-3 uppercase tracking-wide">
+                Multivariate Analysis
+              </h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {multivariateAnalyses.map((analysis, idx) => (
+                  <ChartCard
+                    key={idx}
+                    title={analysis.title}
+                    subtitle={analysis.reasoning}
+                    chart={analysis.chart}
+                    aiInsight={analysis.ai_insight}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {otherCustomAnalyses.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-ink-100 mb-3 uppercase tracking-wide">
+                Additional Analysis
+              </h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {otherCustomAnalyses.map((analysis, idx) => (
+                  <ChartCard
+                    key={idx}
+                    title={analysis.title}
+                    subtitle={analysis.reasoning}
+                    chart={analysis.chart}
+                    aiInsight={analysis.ai_insight}
                   />
                 ))}
               </div>

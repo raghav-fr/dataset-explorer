@@ -35,18 +35,38 @@ def generate_text(prompt: str, system_instruction: str | None = None) -> str:
     )
     response.raise_for_status()
 
+    # Check for direct JSON error response if content-type is json
+    if "application/json" in response.headers.get("Content-Type", ""):
+        try:
+            res_json = response.json()
+            if "error" in res_json:
+                raise RuntimeError(f"OpenRouter API Error: {res_json['error']}")
+        except Exception as e:
+            if isinstance(e, RuntimeError):
+                raise
+
     full_text = ""
     from loguru import logger
 
     for line in response.iter_lines():
         if line:
             decoded_line = line.decode('utf-8').strip()
+            
+            # Check if this is a comment or keep-alive line
+            if decoded_line.startswith(":"):
+                continue
+                
             if decoded_line.startswith("data: "):
                 data_str = decoded_line[6:]
                 if data_str == "[DONE]":
                     break
                 try:
                     chunk_json = json.loads(data_str)
+                    
+                    # Check for streamed error blocks
+                    if "error" in chunk_json:
+                        raise RuntimeError(f"OpenRouter API Stream Error: {chunk_json['error']}")
+                        
                     choices = chunk_json.get('choices', [])
                     if choices:
                         delta = choices[0].get('delta', {})
@@ -60,10 +80,26 @@ def generate_text(prompt: str, system_instruction: str | None = None) -> str:
                         reasoning_tokens = usage.get('reasoning_tokens') or usage.get('reasoningTokens')
                         if reasoning_tokens is not None:
                             logger.info(f"Reasoning tokens: {reasoning_tokens}")
-                except Exception:
+                except Exception as e:
+                    if isinstance(e, RuntimeError):
+                        raise
+                    pass
+            else:
+                # If it doesn't start with data: and isn't empty, check if it's a raw JSON error
+                try:
+                    raw_json = json.loads(decoded_line)
+                    if "error" in raw_json:
+                        raise RuntimeError(f"OpenRouter API Raw Error: {raw_json['error']}")
+                except Exception as e:
+                    if isinstance(e, RuntimeError):
+                        raise
                     pass
 
-    return full_text.strip()
+    full_text_stripped = full_text.strip()
+    if not full_text_stripped:
+        raise RuntimeError("OpenRouter returned an empty response text.")
+        
+    return full_text_stripped
 
 
 def embed_batch_openrouter(texts: list[str]) -> list[list[float]]:

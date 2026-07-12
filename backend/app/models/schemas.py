@@ -31,6 +31,16 @@ class ColumnStats(BaseModel):
     ai_insight: Optional[str] = None
 
 
+class CustomAnalysis(BaseModel):
+    title: str
+    type: str  # "univariate", "bivariate", "multivariate"
+    columns: list[str]
+    plot_type: str
+    chart: Optional[dict[str, Any]] = None
+    ai_insight: Optional[str] = None
+    reasoning: Optional[str] = None
+
+
 class EDAResponse(BaseModel):
     dataset_id: str
     summary: dict[str, Any]
@@ -38,6 +48,7 @@ class EDAResponse(BaseModel):
     categorical_columns: list[ColumnStats]
     correlation: Optional[dict[str, Any]] = None
     correlation_insight: Optional[str] = None
+    custom_analyses: Optional[list[CustomAnalysis]] = []
 
 
 class ChatRequest(BaseModel):

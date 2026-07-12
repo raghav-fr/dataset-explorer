@@ -17,3 +17,5 @@ python-dotenv
 tenacity
 loguru
 requests
+matplotlib
+seaborn
