@@ -4,7 +4,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from app.config import settings
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8))
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=4))
 def generate_text(prompt: str, system_instruction: str | None = None) -> str:
     if not settings.openrouter_api_key:
         raise RuntimeError(
@@ -31,7 +31,7 @@ def generate_text(prompt: str, system_instruction: str | None = None) -> str:
         headers=headers,
         data=json.dumps(payload),
         stream=True,
-        timeout=60
+        timeout=25
     )
     response.raise_for_status()
 

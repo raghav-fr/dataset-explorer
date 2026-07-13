@@ -145,11 +145,11 @@ def plan_eda_analyses(df_summary: dict) -> dict:
 Analyze the following dataset summary and column metadata:
 {json.dumps(df_summary, indent=2)}
 
-Determine a set of 4 to 8 highly relevant visualization tasks for a thorough Exploratory Data Analysis (EDA) of this dataset.
-You MUST include a balanced mix of:
-- Univariate analyses (understanding individual key columns, 2-3 plots)
-- Bivariate analyses (relationships between pairs of columns, e.g., scatter plots, box plots, bar plots, 2-3 plots)
-- Multivariate analyses (multi-variable interactions, e.g., scatter plots with hue, pairplots, heatmaps, 1-2 plots)
+Determine a set of all highly relevant visualization tasks for a thorough Exploratory Data Analysis (EDA) of this dataset.
+You MUST include a balanced mix of all the column that is required:
+- Univariate analyses (understanding all individual key columns numerical as well as categorical)
+- Bivariate analyses (relationships between pairs of all numerical columns that can have relationship or correlation)
+- Multivariate analyses (multi-variable interactions, e.g., scatter plots with hue, pairplots, heatmaps)
 
 For each analysis task, specify:
 1. "type": "univariate", "bivariate", or "multivariate"
