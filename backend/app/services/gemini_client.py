@@ -4,7 +4,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from app.config import settings
 
 
-@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=4))
+@retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=2, min=2, max=15))
 def generate_text(prompt: str, system_instruction: str | None = None) -> str:
     if not settings.openrouter_api_key:
         raise RuntimeError(
@@ -23,27 +23,27 @@ def generate_text(prompt: str, system_instruction: str | None = None) -> str:
     payload = {
         "model": settings.openrouter_model,
         "messages": messages,
-        "stream": True
+        "stream": True,
+        "stream_options": {"include_usage": True}
     }
 
     response = requests.post(
         url="https://openrouter.ai/api/v1/chat/completions",
         headers=headers,
-        data=json.dumps(payload),
+        json=payload,
         stream=True,
         timeout=25
     )
-    response.raise_for_status()
-
-    # Check for direct JSON error response if content-type is json
-    if "application/json" in response.headers.get("Content-Type", ""):
+    
+    if response.status_code != 200:
         try:
-            res_json = response.json()
-            if "error" in res_json:
-                raise RuntimeError(f"OpenRouter API Error: {res_json['error']}")
-        except Exception as e:
-            if isinstance(e, RuntimeError):
-                raise
+            error_data = response.json()
+            error_msg = error_data.get("error", {}).get("message", response.text)
+        except Exception:
+            error_msg = response.text
+        from loguru import logger
+        logger.error(f"OpenRouter API failed with status {response.status_code}: {error_msg}")
+        raise RuntimeError(f"HTTP {response.status_code}: {error_msg}")
 
     full_text = ""
     from loguru import logger
@@ -73,12 +73,16 @@ def generate_text(prompt: str, system_instruction: str | None = None) -> str:
                         content = delta.get('content')
                         if content:
                             full_text += content
+                            import sys
+                            sys.stdout.write(content)
+                            sys.stdout.flush()
 
                     # Usage info / reasoning tokens in the final chunk
                     usage = chunk_json.get('usage')
                     if usage:
                         reasoning_tokens = usage.get('reasoning_tokens') or usage.get('reasoningTokens')
                         if reasoning_tokens is not None:
+                            print(f"\nReasoning tokens: {reasoning_tokens}")
                             logger.info(f"Reasoning tokens: {reasoning_tokens}")
                 except Exception as e:
                     if isinstance(e, RuntimeError):
@@ -98,7 +102,7 @@ def generate_text(prompt: str, system_instruction: str | None = None) -> str:
     full_text_stripped = full_text.strip()
     if not full_text_stripped:
         raise RuntimeError("OpenRouter returned an empty response text.")
-        
+    print(full_text_stripped)
     return full_text_stripped
 
 

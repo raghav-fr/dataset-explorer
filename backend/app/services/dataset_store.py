@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 import pandas as pd
 from app.config import settings
 
@@ -31,3 +32,38 @@ def overwrite_dataframe(dataset_id: str, df: pd.DataFrame) -> None:
 
 def dataset_exists(dataset_id: str) -> bool:
     return os.path.exists(_path_for(dataset_id))
+
+
+def save_eda_cache(dataset_id: str, eda_data: dict) -> None:
+    path = os.path.join(settings.reports_dir, f"{dataset_id}_eda.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(eda_data, f, ensure_ascii=False, indent=2)
+
+
+def load_eda_cache(dataset_id: str) -> dict | None:
+    path = os.path.join(settings.reports_dir, f"{dataset_id}_eda.json")
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
+
+
+def save_summary_cache(dataset_id: str, summary_data: dict) -> None:
+    path = os.path.join(settings.reports_dir, f"{dataset_id}_summary.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(summary_data, f, ensure_ascii=False, indent=2)
+
+
+def load_summary_cache(dataset_id: str) -> dict | None:
+    path = os.path.join(settings.reports_dir, f"{dataset_id}_summary.json")
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
+

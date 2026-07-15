@@ -142,6 +142,8 @@ def run_full_eda(df: pd.DataFrame, generate_ai_insights: bool = True) -> EDAResp
         title = plan.get("title", f"Analysis {idx+1}")
         reasoning = plan.get("reasoning", "")
         
+        logger.info(f"Generating visualization {idx+1}/{len(planned_analyses)}: {title} ({p_type})...")
+        
         # Verify columns exist in dataframe
         cols = [c for c in cols if c in df.columns]
         if not cols:
@@ -170,7 +172,17 @@ def run_full_eda(df: pd.DataFrame, generate_ai_insights: bool = True) -> EDAResp
                     cat_col = col2 if num_col == col1 else col1
                     stats = {"group_means": df.groupby(cat_col)[num_col].mean().round(4).to_dict()}
                 else:
-                    stats = {"contingency_table": df.groupby(col1)[col2].value_counts().head(10).to_dict()}
+                    s = df.groupby(col1)[col2].value_counts().head(10)
+                    contingency_table = {}
+                    for k, count in s.items():
+                        if isinstance(k, tuple) and len(k) == 2:
+                            k1, k2 = str(k[0]), str(k[1])
+                            if k1 not in contingency_table:
+                                contingency_table[k1] = {}
+                            contingency_table[k1][k2] = int(count)
+                        else:
+                            contingency_table[str(k)] = int(count)
+                    stats = {"contingency_table": contingency_table}
             else:
                 # Multivariate stats
                 numeric_df = df[cols].select_dtypes(include="number")
@@ -270,7 +282,6 @@ def run_full_eda(df: pd.DataFrame, generate_ai_insights: bool = True) -> EDAResp
             except Exception as e:
                 logger.error(f"Failed to generate standard correlation insight: {e}")
                 correlation_insight = "Correlation heatmap generated."
-
     return EDAResponse(
         dataset_id="",  # filled in by router
         summary=summary,

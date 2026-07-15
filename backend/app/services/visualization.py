@@ -144,6 +144,18 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
     if not valid_cols:
         return None
         
+    plot_df = df.copy()
+    
+    # Handle high cardinality date-like columns by bucketing by Year-Month
+    for col in valid_cols:
+        if plot_df[col].dtype == "object" and plot_df[col].nunique() > 50:
+            try:
+                dt_series = pd.to_datetime(plot_df[col])
+                if dt_series.nunique() > 50:
+                    plot_df[col] = dt_series.dt.strftime('%Y-%m')
+            except Exception:
+                pass
+                
     fig, ax = plt.subplots(figsize=(8, 5))
     plot_type = plot_type.lower().strip()
     
@@ -151,53 +163,53 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
         if plot_type in ["histplot", "histogram"]:
             col = valid_cols[0]
             kde = params.get("kde", True)
-            sns.histplot(data=df, x=col, kde=kde, ax=ax)
+            sns.histplot(data=plot_df, x=col, kde=kde, ax=ax)
             ax.set_title(f"Histogram of {col}")
             
         elif plot_type == "boxplot":
             if len(valid_cols) >= 2:
                 x_col, y_col = valid_cols[0], valid_cols[1]
                 # Swap columns if necessary for better boxplot orientation
-                if df[x_col].dtype == "object" or df[x_col].nunique() < 10:
-                    sns.boxplot(data=df, x=x_col, y=y_col, hue=params.get("hue"), ax=ax)
+                if plot_df[x_col].dtype == "object" or plot_df[x_col].nunique() < 10:
+                    sns.boxplot(data=plot_df, x=x_col, y=y_col, hue=params.get("hue"), ax=ax)
                 else:
-                    sns.boxplot(data=df, x=y_col, y=x_col, hue=params.get("hue"), ax=ax)
+                    sns.boxplot(data=plot_df, x=y_col, y=x_col, hue=params.get("hue"), ax=ax)
                 ax.set_title(f"Boxplot of {y_col} by {x_col}")
             else:
                 col = valid_cols[0]
-                sns.boxplot(data=df, x=col, ax=ax)
+                sns.boxplot(data=plot_df, x=col, ax=ax)
                 ax.set_title(f"Boxplot of {col}")
                 
         elif plot_type == "violinplot":
             if len(valid_cols) >= 2:
                 x_col, y_col = valid_cols[0], valid_cols[1]
-                if df[x_col].dtype == "object" or df[x_col].nunique() < 10:
-                    sns.violinplot(data=df, x=x_col, y=y_col, hue=params.get("hue"), ax=ax)
+                if plot_df[x_col].dtype == "object" or plot_df[x_col].nunique() < 10:
+                    sns.violinplot(data=plot_df, x=x_col, y=y_col, hue=params.get("hue"), ax=ax)
                 else:
-                    sns.violinplot(data=df, x=y_col, y=x_col, hue=params.get("hue"), ax=ax)
+                    sns.violinplot(data=plot_df, x=y_col, y=x_col, hue=params.get("hue"), ax=ax)
                 ax.set_title(f"Violin Plot of {y_col} by {x_col}")
             else:
                 col = valid_cols[0]
-                sns.violinplot(data=df, x=col, ax=ax)
+                sns.violinplot(data=plot_df, x=col, ax=ax)
                 ax.set_title(f"Violin Plot of {col}")
                 
         elif plot_type == "kdeplot":
             col = valid_cols[0]
-            sns.kdeplot(data=df, x=col, fill=True, ax=ax)
+            sns.kdeplot(data=plot_df, x=col, fill=True, ax=ax)
             ax.set_title(f"KDE Plot of {col}")
             
         elif plot_type in ["countplot", "count_plot"]:
             col = valid_cols[0]
             hue = params.get("hue")
             top_n = params.get("top_n", 10)
-            order = df[col].value_counts().index[:top_n]
-            sns.countplot(data=df, x=col, order=order, hue=hue, ax=ax)
+            order = plot_df[col].value_counts().index[:top_n]
+            sns.countplot(data=plot_df, x=col, order=order, hue=hue, ax=ax)
             ax.set_title(f"Count Plot of {col}")
             plt.xticks(rotation=45, ha="right")
             
         elif plot_type in ["pie", "pie_chart"]:
             col = valid_cols[0]
-            counts = df[col].value_counts().head(8)
+            counts = plot_df[col].value_counts().head(8)
             ax.pie(counts.values, labels=counts.index.astype(str), autopct="%1.1f%%", 
                    textprops={"color": TEXT_LIGHT})
             ax.set_title(f"Distribution of {col}")
@@ -207,7 +219,7 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
                 x_col, y_col = valid_cols[0], valid_cols[1]
                 hue = params.get("hue")
                 size = params.get("size")
-                sns.scatterplot(data=df, x=x_col, y=y_col, hue=hue, size=size, ax=ax)
+                sns.scatterplot(data=plot_df, x=x_col, y=y_col, hue=hue, size=size, ax=ax)
                 ax.set_title(f"Scatter Plot of {y_col} vs {x_col}")
             else:
                 plt.close(fig)
@@ -217,7 +229,12 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
             if len(valid_cols) >= 2:
                 x_col, y_col = valid_cols[0], valid_cols[1]
                 hue = params.get("hue")
-                sns.lineplot(data=df, x=x_col, y=y_col, hue=hue, ax=ax)
+                
+                # Use errorbar=None to speed up lineplot for large datasets
+                if int(matplotlib.__version__.split(".")[0]) >= 3 and int(sns.__version__.split(".")[1]) >= 12:
+                    sns.lineplot(data=plot_df, x=x_col, y=y_col, hue=hue, ax=ax, errorbar=None)
+                else:
+                    sns.lineplot(data=plot_df, x=x_col, y=y_col, hue=hue, ax=ax, ci=None)
                 ax.set_title(f"Line Plot of {y_col} vs {x_col}")
             else:
                 plt.close(fig)
@@ -227,7 +244,7 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
             if len(valid_cols) >= 2:
                 x_col, y_col = valid_cols[0], valid_cols[1]
                 hue = params.get("hue")
-                sns.barplot(data=df, x=x_col, y=y_col, hue=hue, ax=ax)
+                sns.barplot(data=plot_df, x=x_col, y=y_col, hue=hue, ax=ax)
                 ax.set_title(f"Bar Plot of {y_col} by {x_col}")
                 plt.xticks(rotation=45, ha="right")
             else:
@@ -236,7 +253,7 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
                 
         elif plot_type == "heatmap":
             if len(valid_cols) >= 2:
-                numeric_df = df[valid_cols].select_dtypes(include="number")
+                numeric_df = plot_df[valid_cols].select_dtypes(include="number")
                 if numeric_df.shape[1] >= 2:
                     corr = numeric_df.corr()
                     sns.heatmap(corr, annot=True, cmap="coolwarm", vmin=-1, vmax=1, ax=ax, fmt=".2f")
@@ -254,12 +271,12 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
             sub_cols = valid_cols[:4]
             
             # Form clean plotting dataframe
-            if hue and hue in df.columns and hue not in sub_cols:
-                plot_df = df[sub_cols + [hue]].dropna()
+            if hue and hue in plot_df.columns and hue not in sub_cols:
+                pair_df = plot_df[sub_cols + [hue]].dropna()
             else:
-                plot_df = df[sub_cols].dropna()
+                pair_df = plot_df[sub_cols].dropna()
                 
-            pair_grid = sns.pairplot(data=plot_df, vars=sub_cols, hue=hue, plot_kws={"alpha": 0.6})
+            pair_grid = sns.pairplot(data=pair_df, vars=sub_cols, hue=hue, plot_kws={"alpha": 0.6})
             pair_grid.fig.patch.set_facecolor(BG_COLOR)
             
             for ax_sub in pair_grid.axes.flat:
@@ -275,7 +292,7 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
             
         else:
             col = valid_cols[0]
-            sns.histplot(data=df, x=col, ax=ax)
+            sns.histplot(data=plot_df, x=col, ax=ax)
             ax.set_title(f"Distribution of {col}")
             
         return fig_to_base64_dict(fig)

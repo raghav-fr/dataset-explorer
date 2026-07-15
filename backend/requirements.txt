@@ -19,3 +19,4 @@ loguru
 requests
 matplotlib
 seaborn
+json-repair

@@ -7,6 +7,11 @@ router = APIRouter(prefix="/api/dataset", tags=["eda"])
 
 @router.get("/{dataset_id}/eda", response_model=EDAResponse)
 def get_eda(dataset_id: str, ai_insights: bool = Query(default=True)):
+    if ai_insights:
+        cached = dataset_store.load_eda_cache(dataset_id)
+        if cached:
+            return EDAResponse(**cached)
+
     try:
         df = dataset_store.load_dataframe(dataset_id)
     except dataset_store.DatasetNotFoundError:
@@ -14,11 +19,23 @@ def get_eda(dataset_id: str, ai_insights: bool = Query(default=True)):
 
     result = eda_engine.run_full_eda(df, generate_ai_insights=ai_insights)
     result.dataset_id = dataset_id
+
+    if ai_insights:
+        try:
+            dataset_store.save_eda_cache(dataset_id, result.model_dump())
+        except Exception as e:
+            from loguru import logger
+            logger.error(f"Failed to save EDA cache: {e}")
+
     return result
 
 
 @router.get("/{dataset_id}/executive-summary")
 def get_executive_summary(dataset_id: str):
+    cached = dataset_store.load_summary_cache(dataset_id)
+    if cached:
+        return cached
+
     try:
         df = dataset_store.load_dataframe(dataset_id)
     except dataset_store.DatasetNotFoundError:
@@ -33,5 +50,14 @@ def get_executive_summary(dataset_id: str):
     }
     cleaning = preprocessing.analyze(df)
     text = insights.explain_dataset_overview(summary, cleaning.model_dump())
-    return {"executive_summary": text}
+    
+    result = {"executive_summary": text}
+    try:
+        dataset_store.save_summary_cache(dataset_id, result)
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"Failed to save summary cache: {e}")
+
+    return result
+
 

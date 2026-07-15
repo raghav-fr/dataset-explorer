@@ -1,5 +1,6 @@
 from app.services import gemini_client
 import json
+import json_repair
 import re
 from loguru import logger
 
@@ -92,15 +93,37 @@ You MUST respond ONLY with a JSON object in the following format (do not include
 """
 def _parse_json(text: str) -> dict:
     """Robustly extracts and parses JSON from text responses."""
+    try:
+        # First try direct parsing with json_repair
+        parsed = json_repair.repair_json(text, return_objects=True)
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception as e:
+        logger.warning(f"json_repair direct parse failed: {e}. Falling back to manual extraction.")
+
+    # Fallback to extracting JSON using regex and json_repair
     match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL | re.IGNORECASE)
     if match:
-        return json.loads(match.group(1))
+        try:
+            parsed = json_repair.repair_json(match.group(1), return_objects=True)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
     
     match = re.search(r"(\{.*\})", text, re.DOTALL)
     if match:
-        return json.loads(match.group(1))
-    
-    return json.loads(text)
+        try:
+            parsed = json_repair.repair_json(match.group(1), return_objects=True)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+            
+    # Try standard json loads with strict=False as absolute fallback
+    if match:
+        return json.loads(match.group(1), strict=False)
+    return json.loads(text, strict=False)
 
 
 def explain_eda_batch(numerical_cols: list[dict], categorical_cols: list[dict], correlation_pairs: list) -> dict:
@@ -146,10 +169,12 @@ Analyze the following dataset summary and column metadata:
 {json.dumps(df_summary, indent=2)}
 
 Determine a set of all highly relevant visualization tasks for a thorough Exploratory Data Analysis (EDA) of this dataset.
-You MUST include a balanced mix of all the column that is required:
-- Univariate analyses (understanding all individual key columns numerical as well as categorical)
-- Bivariate analyses (relationships between pairs of all numerical columns that can have relationship or correlation)
-- Multivariate analyses (multi-variable interactions, e.g., scatter plots with hue, pairplots, heatmaps)
+Provide a comprehensive list of all helpful visualizations. Do not limit the count; generate as many as needed to fully cover the dataset.
+Include:
+- Univariate analyses for all columns (both numeric and categorical) to understand every single column individually.
+- Bivariate analyses for relationships between all key pairs of columns.
+- Multivariate analyses (multi-variable interactions, e.g., scatter plots with hue, pairplots, heatmaps) for complex interactions.
+
 
 For each analysis task, specify:
 1. "type": "univariate", "bivariate", or "multivariate"

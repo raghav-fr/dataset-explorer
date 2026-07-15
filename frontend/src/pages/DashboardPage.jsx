@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { Loader2, Sparkles, RefreshCcw } from "lucide-react";
 import { useDataset } from "../context/DatasetContext.jsx";
 import { getEDA, getExecutiveSummary } from "../api/client.js";
-import ChartCard from "../components/ChartCard.jsx";
+import LazyChartCard from "../components/LazyChartCard.jsx";
 import StatTile from "../components/StatTile.jsx";
+import { ErrorBoundary } from "../components/ErrorBoundary.jsx";
+import { optimizeEdaPayload } from "../utils/blobUtils.js";
 
-export default function DashboardPage() {
+function Dashboard() {
   const { dataset, eda, setEda, summary, setSummary } = useDataset();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(!eda || !summary);
@@ -34,7 +36,7 @@ export default function DashboardPage() {
           getExecutiveSummary(dataset.dataset_id),
         ]);
         if (!cancelled) {
-          setEda(edaResult);
+          setEda(optimizeEdaPayload(edaResult));
           setSummary(summaryResult.executive_summary);
         }
       } catch (err) {
@@ -55,10 +57,10 @@ export default function DashboardPage() {
   if (!dataset) return null;
 
   const customAnalyses = eda?.custom_analyses || [];
-  const bivariateAnalyses = customAnalyses.filter((a) => a.type === "bivariate");
-  const multivariateAnalyses = customAnalyses.filter((a) => a.type === "multivariate");
+  const bivariateAnalyses = customAnalyses.filter((a) => a?.type === "bivariate");
+  const multivariateAnalyses = customAnalyses.filter((a) => a?.type === "multivariate");
   const otherCustomAnalyses = customAnalyses.filter(
-    (a) => a.type !== "bivariate" && a.type !== "multivariate"
+    (a) => a?.type !== "bivariate" && a?.type !== "multivariate"
   );
 
   return (
@@ -111,21 +113,21 @@ export default function DashboardPage() {
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <StatTile label="Rows" value={eda.summary.rows.toLocaleString()} />
-            <StatTile label="Columns" value={eda.summary.columns} />
+            <StatTile label="Rows" value={(eda.summary?.rows || 0).toLocaleString()} />
+            <StatTile label="Columns" value={eda.summary?.columns || 0} />
             <StatTile
               label="Memory"
-              value={`${eda.summary.memory_mb} MB`}
+              value={`${eda.summary?.memory_mb || 0} MB`}
             />
             <StatTile
               label="Missing values"
-              value={eda.summary.missing_values_total.toLocaleString()}
-              accent={eda.summary.missing_values_total > 0}
+              value={(eda.summary?.missing_values_total || 0).toLocaleString()}
+              accent={eda.summary?.missing_values_total > 0}
             />
             <StatTile
               label="Duplicate rows"
-              value={eda.summary.duplicate_rows.toLocaleString()}
-              accent={eda.summary.duplicate_rows > 0}
+              value={(eda.summary?.duplicate_rows || 0).toLocaleString()}
+              accent={eda.summary?.duplicate_rows > 0}
             />
           </div>
 
@@ -134,7 +136,7 @@ export default function DashboardPage() {
               <h2 className="text-sm font-semibold text-ink-100 mb-3 uppercase tracking-wide">
                 Correlation
               </h2>
-              <ChartCard
+              <LazyChartCard
                 chart={eda.correlation}
                 aiInsight={eda.correlation_insight}
                 height={420}
@@ -142,14 +144,14 @@ export default function DashboardPage() {
             </section>
           )}
 
-          {eda.numerical_columns.length > 0 && (
+          {eda.numerical_columns?.length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-ink-100 mb-3 uppercase tracking-wide">
                 Numerical columns
               </h2>
               <div className="grid md:grid-cols-2 gap-4">
-                {eda.numerical_columns.map((col) => (
-                  <ChartCard
+                {eda.numerical_columns?.map((col) => (
+                  <LazyChartCard
                     key={col.name}
                     title={col.name}
                     chart={col.chart}
@@ -160,14 +162,14 @@ export default function DashboardPage() {
             </section>
           )}
 
-          {eda.categorical_columns.length > 0 && (
+          {eda.categorical_columns?.length > 0 && (
             <section>
               <h2 className="text-sm font-semibold text-ink-100 mb-3 uppercase tracking-wide">
                 Categorical columns
               </h2>
               <div className="grid md:grid-cols-2 gap-4">
-                {eda.categorical_columns.map((col) => (
-                  <ChartCard
+                {eda.categorical_columns?.map((col) => (
+                  <LazyChartCard
                     key={col.name}
                     title={col.name}
                     chart={col.chart}
@@ -185,7 +187,7 @@ export default function DashboardPage() {
               </h2>
               <div className="grid md:grid-cols-2 gap-4">
                 {bivariateAnalyses.map((analysis, idx) => (
-                  <ChartCard
+                  <LazyChartCard
                     key={idx}
                     title={analysis.title}
                     subtitle={analysis.reasoning}
@@ -204,7 +206,7 @@ export default function DashboardPage() {
               </h2>
               <div className="grid md:grid-cols-2 gap-4">
                 {multivariateAnalyses.map((analysis, idx) => (
-                  <ChartCard
+                  <LazyChartCard
                     key={idx}
                     title={analysis.title}
                     subtitle={analysis.reasoning}
@@ -223,7 +225,7 @@ export default function DashboardPage() {
               </h2>
               <div className="grid md:grid-cols-2 gap-4">
                 {otherCustomAnalyses.map((analysis, idx) => (
-                  <ChartCard
+                  <LazyChartCard
                     key={idx}
                     title={analysis.title}
                     subtitle={analysis.reasoning}
@@ -237,5 +239,13 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <ErrorBoundary>
+      <Dashboard />
+    </ErrorBoundary>
   );
 }
