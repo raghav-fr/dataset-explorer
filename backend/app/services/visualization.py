@@ -146,15 +146,30 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
         
     plot_df = df.copy()
     
+    # Collect all columns involved in this plot (x, y, hue, size, etc.)
+    cols_to_check = valid_cols.copy()
+    if params.get("hue") and params["hue"] in plot_df.columns:
+        cols_to_check.append(params["hue"])
+    if params.get("size") and params["size"] in plot_df.columns:
+        cols_to_check.append(params["size"])
+        
     # Handle high cardinality date-like columns by bucketing by Year-Month
-    for col in valid_cols:
+    for col in set(cols_to_check):
         if plot_df[col].dtype == "object" and plot_df[col].nunique() > 50:
             try:
-                dt_series = pd.to_datetime(plot_df[col])
-                if dt_series.nunique() > 50:
-                    plot_df[col] = dt_series.dt.strftime('%Y-%m')
+                # Use errors='coerce' to safely try datetime parsing without hanging on invalid strings
+                dt_series = pd.to_datetime(plot_df[col], errors='coerce')
+                # Check if it actually parsed a significant number of dates (not just all NaT)
+                if dt_series.notna().sum() > len(plot_df) * 0.5:
+                    if dt_series.nunique() > 50:
+                        plot_df[col] = dt_series.dt.strftime('%Y-%m')
             except Exception:
                 pass
+            
+            # Extreme cardinality safety net: Prevent Matplotlib from freezing
+            if plot_df[col].nunique() > 60:
+                top_vals = set(plot_df[col].value_counts().nlargest(50).index)
+                plot_df[col] = plot_df[col].where(plot_df[col].isin(top_vals), "Other")
                 
     fig, ax = plt.subplots(figsize=(8, 5))
     plot_type = plot_type.lower().strip()
