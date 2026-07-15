@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Sparkles, RefreshCcw } from "lucide-react";
 import { useDataset } from "../context/DatasetContext.jsx";
@@ -13,6 +13,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(!eda || !summary);
   const [error, setError] = useState(null);
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
     if (!dataset) {
@@ -24,6 +25,9 @@ function Dashboard() {
       setLoading(false);
       return;
     }
+
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
 
     let cancelled = false;
 

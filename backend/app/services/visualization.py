@@ -245,11 +245,21 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
                 x_col, y_col = valid_cols[0], valid_cols[1]
                 hue = params.get("hue")
                 
-                # Use errorbar=None to speed up lineplot for large datasets
-                if int(matplotlib.__version__.split(".")[0]) >= 3 and int(sns.__version__.split(".")[1]) >= 12:
-                    sns.lineplot(data=plot_df, x=x_col, y=y_col, hue=hue, ax=ax, errorbar=None)
+                # Foolproof aggregation for large datasets to bypass Seaborn's internal freezing
+                if len(plot_df) > 5000:
+                    if hue:
+                        agg_df = plot_df.groupby([x_col, hue])[y_col].mean().reset_index()
+                    else:
+                        agg_df = plot_df.groupby(x_col)[y_col].mean().reset_index()
+                    sns.lineplot(data=agg_df, x=x_col, y=y_col, hue=hue, ax=ax)
                 else:
-                    sns.lineplot(data=plot_df, x=x_col, y=y_col, hue=hue, ax=ax, ci=None)
+                    try:
+                        if int(matplotlib.__version__.split(".")[0]) >= 3 and int(sns.__version__.split(".")[1]) >= 12:
+                            sns.lineplot(data=plot_df, x=x_col, y=y_col, hue=hue, ax=ax, errorbar=None)
+                        else:
+                            sns.lineplot(data=plot_df, x=x_col, y=y_col, hue=hue, ax=ax, ci=None)
+                    except:
+                        sns.lineplot(data=plot_df, x=x_col, y=y_col, hue=hue, ax=ax)
                 ax.set_title(f"Line Plot of {y_col} vs {x_col}")
             else:
                 plt.close(fig)
