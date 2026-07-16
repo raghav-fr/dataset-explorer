@@ -32,7 +32,9 @@ def _categorical_stats(series: pd.Series) -> dict:
     }
 
 
-def run_full_eda(df: pd.DataFrame, generate_ai_insights: bool = True) -> EDAResponse:
+def run_full_eda_generator(df: pd.DataFrame, generate_ai_insights: bool = True):
+    yield {"type": "progress", "message": "Analyzing dataset dimensions and computing summary statistics..."}
+    
     summary = {
         "rows": int(df.shape[0]),
         "columns": int(df.shape[1]),
@@ -40,6 +42,7 @@ def run_full_eda(df: pd.DataFrame, generate_ai_insights: bool = True) -> EDAResp
         "missing_values_total": int(df.isna().sum().sum()),
         "duplicate_rows": int(df.duplicated().sum()),
     }
+
     
     # 1. Build a column metadata summary to send to AI
     col_metadata = []
@@ -78,6 +81,8 @@ def run_full_eda(df: pd.DataFrame, generate_ai_insights: bool = True) -> EDAResp
     planned_analyses = []
     from loguru import logger
     try:
+        if generate_ai_insights:
+            yield {"type": "progress", "message": "Planning optimal visualizations with AI..."}
         plan_response = insights.plan_eda_analyses(df_summary)
         planned_analyses = plan_response.get("analyses", [])
     except Exception as e:
@@ -143,6 +148,7 @@ def run_full_eda(df: pd.DataFrame, generate_ai_insights: bool = True) -> EDAResp
         reasoning = plan.get("reasoning", "")
         
         logger.info(f"Generating visualization {idx+1}/{len(planned_analyses)}: {title} ({p_type})...")
+        yield {"type": "progress", "message": f"Generating visualization {idx+1}/{len(planned_analyses)}: {title}..."}
         
         # Verify columns exist in dataframe
         cols = [c for c in cols if c in df.columns]
@@ -205,10 +211,13 @@ def run_full_eda(df: pd.DataFrame, generate_ai_insights: bool = True) -> EDAResp
         }
         
         analyses_to_explain.append(analysis_data)
+        yield {"type": "progress", "message": f"Completed visualization {idx+1}/{len(planned_analyses)}: {title}"}
+
         
     # 4. Generate batch AI insights for the executed analyses
     ai_insights = {}
     if generate_ai_insights and analyses_to_explain:
+        yield {"type": "progress", "message": f"Crafting AI business insights for all {len(analyses_to_explain)} visualizations..."}
         try:
             # We pass a slimmed down list of analyses (without raw base64 charts) to the AI to write insights
             analyses_meta = [
@@ -264,6 +273,7 @@ def run_full_eda(df: pd.DataFrame, generate_ai_insights: bool = True) -> EDAResp
     correlation_insight = None
     numeric_cols = df.select_dtypes(include="number").columns.tolist()
     if len(numeric_cols) >= 2:
+        yield {"type": "progress", "message": "Computing numerical correlation heatmaps..."}
         correlation_chart = visualization.correlation_heatmap(df)
         if generate_ai_insights:
             try:
@@ -282,7 +292,7 @@ def run_full_eda(df: pd.DataFrame, generate_ai_insights: bool = True) -> EDAResp
             except Exception as e:
                 logger.error(f"Failed to generate standard correlation insight: {e}")
                 correlation_insight = "Correlation heatmap generated."
-    return EDAResponse(
+    final_response = EDAResponse(
         dataset_id="",  # filled in by router
         summary=summary,
         numerical_columns=numerical_results,
@@ -291,4 +301,4 @@ def run_full_eda(df: pd.DataFrame, generate_ai_insights: bool = True) -> EDAResp
         correlation_insight=correlation_insight,
         custom_analyses=custom_analyses_results
     )
-
+    yield {"type": "complete", "data": final_response.model_dump()}

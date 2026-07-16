@@ -8,27 +8,15 @@ export function DatasetProvider({ children }) {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [eda, setEda] = useState(() => {
-    const saved = sessionStorage.getItem("de_eda");
-    return saved ? JSON.parse(saved) : null;
-  });
+  // EDA is never persisted — base64 charts make it 10-50 MB, busting sessionStorage quota.
+  const [eda, setEda] = useState(null);
 
   const [summary, setSummary] = useState(() => {
     const saved = sessionStorage.getItem("de_summary");
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [indexed, setIndexed] = useState(() => {
-    const saved = sessionStorage.getItem("de_indexed");
-    return saved ? JSON.parse(saved) === "true" : false;
-  });
-
-  const [messages, setMessages] = useState(() => {
-    const saved = sessionStorage.getItem("de_messages");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  // Sync states to sessionStorage on change
+  // Sync lightweight states to sessionStorage
   useEffect(() => {
     if (dataset) {
       sessionStorage.setItem("de_dataset", JSON.stringify(dataset));
@@ -38,14 +26,6 @@ export function DatasetProvider({ children }) {
   }, [dataset]);
 
   useEffect(() => {
-    if (eda) {
-      sessionStorage.setItem("de_eda", JSON.stringify(eda));
-    } else {
-      sessionStorage.removeItem("de_eda");
-    }
-  }, [eda]);
-
-  useEffect(() => {
     if (summary) {
       sessionStorage.setItem("de_summary", JSON.stringify(summary));
     } else {
@@ -53,21 +33,11 @@ export function DatasetProvider({ children }) {
     }
   }, [summary]);
 
-  useEffect(() => {
-    sessionStorage.setItem("de_indexed", indexed ? "true" : "false");
-  }, [indexed]);
-
-  useEffect(() => {
-    sessionStorage.setItem("de_messages", JSON.stringify(messages));
-  }, [messages]);
-
-  // Special setter to change/clear dataset and reset other states
+  // Special setter: changing the dataset resets all derived state
   const changeDataset = (newDataset) => {
     setDataset(newDataset);
     setEda(null);
     setSummary(null);
-    setIndexed(false);
-    setMessages([]);
   };
 
   return (
@@ -79,10 +49,6 @@ export function DatasetProvider({ children }) {
         setEda,
         summary,
         setSummary,
-        indexed,
-        setIndexed,
-        messages,
-        setMessages,
       }}
     >
       {children}

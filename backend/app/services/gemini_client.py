@@ -32,7 +32,7 @@ def generate_text(prompt: str, system_instruction: str | None = None) -> str:
         headers=headers,
         json=payload,
         stream=True,
-        timeout=25
+        timeout=(10, 45) # 10s connect timeout, 45s read timeout to prevent iter_lines from hanging forever
     )
     
     if response.status_code != 200:

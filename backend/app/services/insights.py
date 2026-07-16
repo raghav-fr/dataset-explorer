@@ -180,7 +180,7 @@ For each analysis task, specify:
 1. "type": "univariate", "bivariate", or "multivariate"
 2. "title": Descriptive title of what the chart represents (e.g. "Distribution of Age", "Salary vs Experience by Gender").
 3. "columns": List of column names involved.
-4. "plot_type": One of: "histplot", "boxplot", "violinplot", "kdeplot", "countplot", "pie_chart", "scatterplot", "lineplot", "barplot", "pairplot", "heatmap"
+4. "plot_type": One of: "histplot", "boxplot", "violinplot", "kdeplot", "countplot", "pie_chart", "scatterplot", "barplot", "pairplot", "heatmap"
 5. "parameters": Dict of additional options (e.g., {{"kde": true}}, {{"hue": "gender"}}, etc.)
 6. "reasoning": A 1-2 sentence business explanation of why this specific analysis is crucial for this dataset.
 

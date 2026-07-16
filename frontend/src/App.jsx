@@ -1,13 +1,11 @@
 import { Routes, Route, NavLink } from "react-router-dom";
-import { LayoutGrid, UploadCloud, MessagesSquare, ScanLine } from "lucide-react";
+import { LayoutGrid, UploadCloud, ScanLine } from "lucide-react";
 import UploadPage from "./pages/UploadPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
-import ChatPage from "./pages/ChatPage.jsx";
 
 const navItems = [
   { to: "/", label: "Upload", icon: UploadCloud, end: true },
   { to: "/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { to: "/chat", label: "Ask the data", icon: MessagesSquare },
 ];
 
 function App() {
@@ -51,7 +49,6 @@ function App() {
         <Routes>
           <Route path="/" element={<UploadPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/chat" element={<ChatPage />} />
         </Routes>
       </main>
     </div>

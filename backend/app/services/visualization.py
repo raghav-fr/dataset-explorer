@@ -153,22 +153,21 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
     if params.get("size") and params["size"] in plot_df.columns:
         cols_to_check.append(params["size"])
         
-    # Handle high cardinality date-like columns by bucketing by Year-Month
+    # Handle high cardinality date-like columns by bucketing and cap categorical variables
     for col in set(cols_to_check):
-        if plot_df[col].dtype == "object" and plot_df[col].nunique() > 50:
-            try:
-                # Use errors='coerce' to safely try datetime parsing without hanging on invalid strings
-                dt_series = pd.to_datetime(plot_df[col], errors='coerce')
-                # Check if it actually parsed a significant number of dates (not just all NaT)
-                if dt_series.notna().sum() > len(plot_df) * 0.5:
-                    if dt_series.nunique() > 50:
+        if not pd.api.types.is_numeric_dtype(plot_df[col]) and plot_df[col].nunique() > 20:
+            # Try date parsing first
+            if plot_df[col].dtype == "object":
+                try:
+                    dt_series = pd.to_datetime(plot_df[col], errors='coerce')
+                    if dt_series.notna().sum() > len(plot_df) * 0.5:
                         plot_df[col] = dt_series.dt.strftime('%Y-%m')
-            except Exception:
-                pass
+                except Exception:
+                    pass
             
-            # Extreme cardinality safety net: Prevent Matplotlib from freezing
-            if plot_df[col].nunique() > 60:
-                top_vals = set(plot_df[col].value_counts().nlargest(50).index)
+            # Universal cardinality cap to prevent unreadable plots and freezing
+            if plot_df[col].nunique() > 20:
+                top_vals = set(plot_df[col].value_counts().nlargest(19).index)
                 plot_df[col] = plot_df[col].where(plot_df[col].isin(top_vals), "Other")
                 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -178,9 +177,16 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
         if plot_type in ["histplot", "histogram"]:
             col = valid_cols[0]
             kde = params.get("kde", True)
+            
+            # Prevent KDE calculation on categorical/string columns, which causes Seaborn/Matplotlib to freeze
+            if plot_df[col].dtype == "object" or not pd.api.types.is_numeric_dtype(plot_df[col]):
+                kde = False
+                
             sns.histplot(data=plot_df, x=col, kde=kde, ax=ax)
             ax.set_title(f"Histogram of {col}")
-            
+            if not pd.api.types.is_numeric_dtype(plot_df[col]):
+                plt.xticks(rotation=45, ha="right")
+                
         elif plot_type == "boxplot":
             if len(valid_cols) >= 2:
                 x_col, y_col = valid_cols[0], valid_cols[1]
@@ -240,31 +246,7 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
                 plt.close(fig)
                 return None
                 
-        elif plot_type in ["lineplot", "line"]:
-            if len(valid_cols) >= 2:
-                x_col, y_col = valid_cols[0], valid_cols[1]
-                hue = params.get("hue")
-                
-                # Foolproof aggregation for large datasets to bypass Seaborn's internal freezing
-                if len(plot_df) > 5000:
-                    if hue:
-                        agg_df = plot_df.groupby([x_col, hue])[y_col].mean().reset_index()
-                    else:
-                        agg_df = plot_df.groupby(x_col)[y_col].mean().reset_index()
-                    sns.lineplot(data=agg_df, x=x_col, y=y_col, hue=hue, ax=ax)
-                else:
-                    try:
-                        if int(matplotlib.__version__.split(".")[0]) >= 3 and int(sns.__version__.split(".")[1]) >= 12:
-                            sns.lineplot(data=plot_df, x=x_col, y=y_col, hue=hue, ax=ax, errorbar=None)
-                        else:
-                            sns.lineplot(data=plot_df, x=x_col, y=y_col, hue=hue, ax=ax, ci=None)
-                    except:
-                        sns.lineplot(data=plot_df, x=x_col, y=y_col, hue=hue, ax=ax)
-                ax.set_title(f"Line Plot of {y_col} vs {x_col}")
-            else:
-                plt.close(fig)
-                return None
-                
+
         elif plot_type in ["barplot", "bar"]:
             if len(valid_cols) >= 2:
                 x_col, y_col = valid_cols[0], valid_cols[1]
