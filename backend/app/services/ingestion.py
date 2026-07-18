@@ -37,7 +37,12 @@ def read_uploaded_file(file: UploadFile, raw: bytes) -> pd.DataFrame:
         elif ext in (".xlsx", ".xls"):
             df = pd.read_excel(io.BytesIO(raw))
         elif ext == ".json":
-            df = pd.read_json(io.BytesIO(raw))
+            # Try standard JSON first; if it has trailing data (NDJSON/JSON Lines),
+            # fall back to lines=True mode.
+            try:
+                df = pd.read_json(io.BytesIO(raw))
+            except ValueError:
+                df = pd.read_json(io.BytesIO(raw), lines=True)
         elif ext == ".parquet":
             df = pd.read_parquet(io.BytesIO(raw))
         else:

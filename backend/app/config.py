@@ -11,12 +11,6 @@ class Settings(BaseSettings):
         alias="OPENROUTER_EMBEDDING_MODEL",
     )
 
-    qdrant_host: str = Field(default="localhost", alias="QDRANT_HOST")
-    qdrant_port: int = Field(default=6333, alias="QDRANT_PORT")
-    qdrant_collection_prefix: str = Field(
-        default="dataset_", alias="QDRANT_COLLECTION_PREFIX"
-    )
-
     max_upload_mb: int = Field(default=200, alias="MAX_UPLOAD_MB")
     storage_dir: str = Field(default="app/storage/datasets", alias="STORAGE_DIR")
     reports_dir: str = Field(default="app/storage/reports", alias="REPORTS_DIR")
