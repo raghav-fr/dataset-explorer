@@ -165,26 +165,70 @@ You MUST respond ONLY with a JSON object in the following format (do not include
 def plan_eda_analyses(df_summary: dict) -> dict:
     """Queries Gemini to determine which columns to examine and which plot types to use."""
     prompt = f"""
-Analyze the following dataset summary and column metadata:
+You are a senior data analyst planning a thorough Exploratory Data Analysis (EDA).
+Below is the complete dataset metadata. Each column entry includes:
+  - name, type (numeric/categorical/datetime/boolean), dtype (raw pandas dtype)
+  - missing: count of null values, missing_pct: percentage missing
+  - unique: number of unique values
+  - is_high_cardinality: true if categorical/boolean with unique > 20
+  - stats: numeric stats (min, max, mean, median, std, skew) OR datetime range (min_date, max_date, date_range_days)
+  - top_values: top-10 value counts for categorical/boolean columns (null for numeric/datetime)
+  - sample_values: up to 5 representative non-null values
+
+Dataset metadata:
 {json.dumps(df_summary, indent=2)}
 
-Determine a set of all highly relevant visualization tasks for a thorough Exploratory Data Analysis (EDA) of this dataset.
-Provide a comprehensive list of all helpful visualizations. Do not limit the count; generate as many as needed to fully cover the dataset.
-Include:
-- Univariate analyses for all columns (both numeric and categorical) to understand every single column individually.
-- Bivariate analyses for relationships between all key pairs of columns.
-- Multivariate analyses (multi-variable interactions, e.g., scatter plots with hue, pairplots, heatmaps) for complex interactions.
+---
+PLANNING RULES — follow these strictly:
 
+1. QUANTITY: Generate as many visualizations as genuinely needed to cover the dataset thoroughly.
+   Every column must appear in at least one univariate chart. Every meaningful column pair should appear in a bivariate chart.
 
+2. HIGH-CARDINALITY CATEGORICAL (is_high_cardinality = true OR unique > 45):
+   - DO NOT plan a "countplot" or "barplot" univariate chart for these columns.
+   - These produce unreadable charts with too many bars. Skip univariate entirely for such columns
+     OR plan a "histplot" of the value-count frequency distribution if it adds value.
+   - For bivariate involving high-cardinality categoricals, use "boxplot", "violinplot", or "scatterplot" (not barplot/countplot).
+
+3. LOW-CARDINALITY CATEGORICAL (unique <= 45, is_high_cardinality = false):
+   - "countplot" or "barplot" is appropriate. "pie_chart" is good for <= 8 unique values.
+
+4. DATETIME COLUMNS:
+   - Do NOT plan a "countplot" or "barplot" for datetime columns.
+   - Plan a time-series trend: use "histplot" (with kde=false) or "barplot" only if the column has been
+     reduced to MM-YY or YYYY string format with <= 20 unique values.
+   - For raw datetime, use "kdeplot" or group-based "barplot" on aggregated periods.
+
+5. NUMERIC COLUMNS:
+   - "histplot" (with kde=true) for distribution.
+   - "boxplot" or "violinplot" for outlier inspection.
+   - Use stats (skew, std, min/max) to decide: high skew → log-scale or boxplot is more informative.
+
+6. BIVARIATE:
+   - numeric vs numeric → "scatterplot" (add regression line via parameters if correlated).
+   - numeric vs low-cardinality categorical → "boxplot" or "violinplot".
+   - numeric vs high-cardinality categorical → skip or use "scatterplot".
+   - datetime vs numeric → line plot / trend (use "barplot" only if date is aggregated to <= 20 periods).
+
+7. MULTIVARIATE:
+   - Use "heatmap" for correlation matrix of all numeric columns.
+   - Use "pairplot" for numeric columns when there are 3–6 numeric columns.
+   - Use "scatterplot" with hue for 2 numeric + 1 low-cardinality categorical.
+
+8. REASONING: Every planned chart must include a non-trivial "reasoning" (1-2 sentences) that references
+   actual column details (e.g., skew value, unique count, missing_pct) to justify why this specific chart
+   is valuable for this dataset.
+
+---
 For each analysis task, specify:
 1. "type": "univariate", "bivariate", or "multivariate"
-2. "title": Descriptive title of what the chart represents (e.g. "Distribution of Age", "Salary vs Experience by Gender").
-3. "columns": List of column names involved.
+2. "title": Descriptive title (e.g. "Distribution of Age", "Salary vs Experience by Gender")
+3. "columns": List of column names involved
 4. "plot_type": One of: "histplot", "boxplot", "violinplot", "kdeplot", "countplot", "pie_chart", "scatterplot", "barplot", "pairplot", "heatmap"
-5. "parameters": Dict of additional options (e.g., {{"kde": true}}, {{"hue": "gender"}}, etc.)
-6. "reasoning": A 1-2 sentence business explanation of why this specific analysis is crucial for this dataset.
+5. "parameters": Dict of additional options (e.g., {{"kde": true}}, {{"hue": "gender"}})
+6. "reasoning": 1-2 sentence justification referencing actual data characteristics
 
-You MUST respond ONLY with a JSON object in this format (do not include any additional text or explanation outside of the JSON):
+You MUST respond ONLY with a JSON object in this exact format (no extra text outside JSON):
 {{
   "analyses": [
     {{
@@ -193,7 +237,7 @@ You MUST respond ONLY with a JSON object in this format (do not include any addi
       "columns": ["age"],
       "plot_type": "histplot",
       "parameters": {{"kde": true}},
-      "reasoning": "Examines the age profile of customers to determine the primary target demographic."
+      "reasoning": "Age has a skew of 1.2 indicating right-skew; a histogram with KDE reveals the concentration of younger customers."
     }},
     ...
   ]

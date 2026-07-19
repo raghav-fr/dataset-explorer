@@ -155,7 +155,7 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
         
     # Handle high cardinality date-like columns by bucketing and cap categorical variables
     for col in set(cols_to_check):
-        if not pd.api.types.is_numeric_dtype(plot_df[col]) and plot_df[col].nunique() > 20:
+        if not pd.api.types.is_numeric_dtype(plot_df[col]) and plot_df[col].nunique() > 45:
             # Try date parsing first
             if plot_df[col].dtype == "object":
                 try:
@@ -166,8 +166,8 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
                     pass
             
             # Universal cardinality cap to prevent unreadable plots and freezing
-            if plot_df[col].nunique() > 20:
-                top_vals = set(plot_df[col].value_counts().nlargest(19).index)
+            if plot_df[col].nunique() > 45:
+                top_vals = set(plot_df[col].value_counts().nlargest(44).index)
                 plot_df[col] = plot_df[col].where(plot_df[col].isin(top_vals), "Other")
                 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -244,8 +244,9 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
                 ax.set_title(f"Scatter Plot of {y_col} vs {x_col}")
             else:
                 plt.close(fig)
+                from loguru import logger
+                logger.warning(f"scatterplot skipped for {valid_cols} — requires at least 2 columns.")
                 return None
-                
 
         elif plot_type in ["barplot", "bar"]:
             if len(valid_cols) >= 2:
@@ -255,8 +256,14 @@ def generate_custom_plot(df: pd.DataFrame, columns: list[str], plot_type: str, p
                 ax.set_title(f"Bar Plot of {y_col} by {x_col}")
                 plt.xticks(rotation=45, ha="right")
             else:
-                plt.close(fig)
-                return None
+                # Univariate barplot: render as a top-N value-frequency bar chart
+                col = valid_cols[0]
+                top_n = params.get("top_n", 15)
+                vc = plot_df[col].value_counts().head(top_n)
+                sns.barplot(x=vc.index.astype(str), y=vc.values, ax=ax)
+                ax.set_title(f"Top {top_n} Values of {col}")
+                ax.set_ylabel("Count")
+                plt.xticks(rotation=45, ha="right")
                 
         elif plot_type == "heatmap":
             if len(valid_cols) >= 2:

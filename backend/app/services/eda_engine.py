@@ -32,9 +32,60 @@ def _categorical_stats(series: pd.Series) -> dict:
     }
 
 
+def _prepare_df_for_eda(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a working copy of df with date columns detected, converted,
+    and granularity-reduced when they contain more than 20 unique values.
+
+    Reduction ladder:
+      full datetime  → MM-YY string  (if unique > 20)
+      MM-YY string   → YYYY string   (if still unique > 20)
+    """
+    df = df.copy()
+
+    for col in df.columns:
+        series = df[col]
+
+        # Already datetime dtype — no conversion needed
+        if pd.api.types.is_datetime64_any_dtype(series):
+            dt_series = series
+        elif series.dtype == object or pd.api.types.is_string_dtype(series):
+            # Try to parse as datetime; accept if ≥80% of non-null values parse OK
+            sample = series.dropna().astype(str)
+            if sample.empty:
+                continue
+            parsed = pd.to_datetime(sample, errors="coerce", format="mixed")
+            if parsed.notna().mean() < 0.8:
+                continue  # Not a date column
+            # Convert the full column
+            df[col] = pd.to_datetime(series, errors="coerce", format="mixed")
+            dt_series = df[col]
+        else:
+            continue  # Numeric / bool — skip
+
+        unique_count = int(dt_series.dropna().nunique())
+
+        if unique_count <= 20:
+            # Granularity is fine — keep as datetime
+            continue
+
+        # Step 1: reduce to MM-YY
+        mm_yy = dt_series.dropna().dt.strftime("%m-%y")
+        if int(mm_yy.nunique()) <= 20:
+            df[col] = dt_series.dt.strftime("%m-%y")
+            continue
+
+        # Step 2: still > 20 → reduce to YYYY
+        df[col] = dt_series.dt.strftime("%Y")
+
+    return df
+
+
 def run_full_eda_generator(df: pd.DataFrame, generate_ai_insights: bool = True):
     yield {"type": "progress", "message": "Analyzing dataset dimensions and computing summary statistics..."}
-    
+
+    # Work on a prepared copy: date columns detected, converted, and granularity-reduced
+    df = _prepare_df_for_eda(df)
+
     summary = {
         "rows": int(df.shape[0]),
         "columns": int(df.shape[1]),
@@ -43,38 +94,82 @@ def run_full_eda_generator(df: pd.DataFrame, generate_ai_insights: bool = True):
         "duplicate_rows": int(df.duplicated().sum()),
     }
 
-    
-    # 1. Build a column metadata summary to send to AI
+    # 1. Build a rich column metadata summary to send to AI
     col_metadata = []
+    total_rows = len(df)
     for col in df.columns:
-        # Determine basic type info
-        if pd.api.types.is_numeric_dtype(df[col]):
+        series = df[col]
+
+        # --- Determine column type ---
+        if pd.api.types.is_numeric_dtype(series):
             col_type = "numeric"
-        elif pd.api.types.is_datetime64_any_dtype(df[col]):
+        elif pd.api.types.is_datetime64_any_dtype(series):
             col_type = "datetime"
-        elif pd.api.types.is_bool_dtype(df[col]):
+        elif pd.api.types.is_bool_dtype(series):
             col_type = "boolean"
         else:
             col_type = "categorical"
-            
-        missing_count = int(df[col].isna().sum())
-        unique_count = int(df[col].nunique())
-        
-        # Get up to 5 non-null sample values as native python types
-        sample_vals = df[col].dropna().head(5).tolist()
-        sample_vals = [x.item() if hasattr(x, "item") else str(x) for x in sample_vals]
-        
+
+        missing_count = int(series.isna().sum())
+        unique_count = int(series.nunique(dropna=True))
+        missing_pct = round(missing_count / total_rows * 100, 2) if total_rows > 0 else 0.0
+
+        # High-cardinality flag (categorical only)
+        is_high_cardinality = (col_type in ("categorical", "boolean")) and (unique_count > 45)
+
+        # --- Per-type stats ---
+        col_stats = None
+        top_values = None
+
+        if col_type == "numeric":
+            non_null = series.dropna()
+            if non_null.empty:
+                col_stats = {}
+            else:
+                col_stats = {
+                    "min": round(float(non_null.min()), 4),
+                    "max": round(float(non_null.max()), 4),
+                    "mean": round(float(non_null.mean()), 4),
+                    "median": round(float(non_null.median()), 4),
+                    "std": round(float(non_null.std()), 4),
+                    "skew": round(float(non_null.skew()), 4),
+                }
+
+        elif col_type == "datetime":
+            non_null = series.dropna()
+            if non_null.empty:
+                col_stats = {}
+            else:
+                col_stats = {
+                    "min_date": str(non_null.min()),
+                    "max_date": str(non_null.max()),
+                    "date_range_days": int((non_null.max() - non_null.min()).days),
+                }
+
+        else:  # categorical / boolean / reduced-date string
+            vc = series.value_counts(dropna=True)
+            top_values = {str(k): int(v) for k, v in vc.head(10).items()}
+
+        # --- Sample values (up to 5 non-null) ---
+        raw_samples = series.dropna().head(5).tolist()
+        sample_vals = [x.item() if hasattr(x, "item") else str(x) for x in raw_samples]
+
         col_metadata.append({
             "name": col,
             "type": col_type,
+            "dtype": str(series.dtype),
             "missing": missing_count,
+            "missing_pct": missing_pct,
             "unique": unique_count,
-            "sample_values": sample_vals
+            "is_high_cardinality": is_high_cardinality,
+            "stats": col_stats,
+            "top_values": top_values,
+            "sample_values": sample_vals,
         })
-        
+
     df_summary = {
         "summary": summary,
-        "columns": col_metadata
+        "columns": col_metadata,
     }
     
     # 2. Query AI to generate the EDA visualization plan
@@ -154,11 +249,26 @@ def run_full_eda_generator(df: pd.DataFrame, generate_ai_insights: bool = True):
         cols = [c for c in cols if c in df.columns]
         if not cols:
             continue
-            
+
+        # Guard: block countplot/barplot for high-cardinality columns in univariate analyses.
+        # A count/bar chart with >50 categories is unreadable and provides no analytical value.
+        if (
+            a_type == "univariate"
+            and len(cols) == 1
+            and p_type in ("countplot", "barplot")
+            and int(df[cols[0]].nunique(dropna=True)) > 45
+        ):
+            logger.warning(
+                f"Skipping {p_type} for '{cols[0]}' — {int(df[cols[0]].nunique())} unique values "
+                f"exceeds the 50-category readability limit."
+            )
+            continue
+
         # Generate Seaborn/Matplotlib base64 chart
         chart = visualization.generate_custom_plot(df, cols, p_type, params)
         if not chart:
             continue
+
             
         # Compute summary stats for this analysis to help the AI explain it
         stats = {}
