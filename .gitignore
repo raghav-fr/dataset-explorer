@@ -19,3 +19,4 @@ backend/app/storage/reports/*
 
 # OS
 .DS_Store
+backend/app/storage
