@@ -6,11 +6,6 @@ pandas
 numpy
 openpyxl
 pyarrow
-scipy
-scikit-learn
-plotly
-kaleido
-qdrant-client
 pydantic
 pydantic-settings
 python-dotenv
