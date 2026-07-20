@@ -21,7 +21,15 @@ export default function UploadPage() {
         setDataset(data);
         navigate("/dashboard");
       } catch (err) {
-        setError(err?.response?.data?.detail || "Failed to upload dataset.");
+        console.error("[upload] error:", err);
+        console.error("[upload] response:", err?.response);
+        console.error("[upload] message:", err?.message);
+        const detail =
+          err?.response?.data?.detail ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Failed to upload dataset.";
+        setError(detail);
       } finally {
         setLoading(false);
       }
