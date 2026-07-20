@@ -1,0 +1,10 @@
+[project]
+name = "ai-dataset-explorer-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+# Use requirements.txt as the source of truth for dependencies.
+# Vercel's uv-based build picks this up automatically.
+package = false
