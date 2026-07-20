@@ -1,3 +1,9 @@
+import os
+
+# Force non-interactive matplotlib backend (prevents GUI init hang on headless server)
+os.environ["MPLBACKEND"] = "Agg"
+
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
@@ -5,10 +11,19 @@ from loguru import logger
 from app.config import settings
 from app.routers import upload, eda
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("AI Dataset Explorer backend started.")
+    yield
+    logger.info("AI Dataset Explorer backend shutting down.")
+
+
 app = FastAPI(
     title="AI Dataset Explorer API",
     description="Auto-EDA + AI insights over uploaded datasets",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -25,9 +40,7 @@ app.include_router(eda.router)
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok"}
-
-
-@app.on_event("startup")
-async def on_startup():
-    logger.info("AI Dataset Explorer backend started.")
+    return {
+        "status": "ok",
+        "storage": "redis" if settings.use_redis else "filesystem",
+    }

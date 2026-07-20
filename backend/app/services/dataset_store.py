@@ -1,69 +1,210 @@
+"""
+dataset_store.py — Unified storage layer for the AI Dataset Explorer.
+
+Storage Strategy (priority order):
+  1. Upstash Redis  — if UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set.
+                      DataFrames are stored as base64-encoded Parquet bytes.
+                      EDA/summary caches are stored as JSON strings.
+                      All keys carry a configurable TTL (default 24 h).
+  2. Local FS       — falls back to settings.storage_dir / reports_dir.
+                      On Vercel these point to /tmp (ephemeral but functional
+                      within a single invocation / warm instance).
+"""
+
 import os
+import io
 import uuid
 import json
+import base64
+
 import pandas as pd
+from loguru import logger
 from app.config import settings
 
+
+# ---------------------------------------------------------------------------
+# Custom exceptions
+# ---------------------------------------------------------------------------
 
 class DatasetNotFoundError(Exception):
     pass
 
 
-def _path_for(dataset_id: str) -> str:
+# ---------------------------------------------------------------------------
+# Redis helpers  (lazy import so the app still starts without upstash-redis)
+# ---------------------------------------------------------------------------
+
+def _redis_client():
+    """Return an Upstash Redis client, or None if not configured."""
+    if not settings.use_redis:
+        return None
+    try:
+        from upstash_redis import Redis  # type: ignore
+        return Redis(
+            url=settings.upstash_redis_rest_url,
+            token=settings.upstash_redis_rest_token,
+        )
+    except ImportError:
+        logger.warning("upstash-redis package not installed; falling back to filesystem storage.")
+        return None
+
+
+def _df_key(dataset_id: str) -> str:
+    return f"ds:{dataset_id}:parquet"
+
+
+def _eda_key(dataset_id: str) -> str:
+    return f"ds:{dataset_id}:eda"
+
+
+def _summary_key(dataset_id: str) -> str:
+    return f"ds:{dataset_id}:summary"
+
+
+# ---------------------------------------------------------------------------
+# Filesystem helpers
+# ---------------------------------------------------------------------------
+
+def _ensure_dirs():
+    os.makedirs(settings.storage_dir, exist_ok=True)
+    os.makedirs(settings.reports_dir, exist_ok=True)
+
+
+def _fs_path(dataset_id: str) -> str:
     return os.path.join(settings.storage_dir, f"{dataset_id}.parquet")
 
 
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
 def save_dataframe(df: pd.DataFrame) -> str:
     dataset_id = uuid.uuid4().hex[:12]
-    df.to_parquet(_path_for(dataset_id), index=False)
+    r = _redis_client()
+
+    if r is not None:
+        buf = io.BytesIO()
+        df.to_parquet(buf, index=False)
+        encoded = base64.b64encode(buf.getvalue()).decode("ascii")
+        r.set(_df_key(dataset_id), encoded, ex=settings.dataset_ttl_seconds)
+        logger.info(f"Saved dataset {dataset_id} to Redis ({len(encoded)} bytes b64).")
+    else:
+        _ensure_dirs()
+        df.to_parquet(_fs_path(dataset_id), index=False)
+        logger.info(f"Saved dataset {dataset_id} to filesystem.")
+
     return dataset_id
 
 
 def load_dataframe(dataset_id: str) -> pd.DataFrame:
-    path = _path_for(dataset_id)
-    if not os.path.exists(path):
-        raise DatasetNotFoundError(f"Dataset {dataset_id} not found")
-    return pd.read_parquet(path)
+    r = _redis_client()
+
+    if r is not None:
+        encoded = r.get(_df_key(dataset_id))
+        if encoded is None:
+            raise DatasetNotFoundError(f"Dataset {dataset_id} not found in Redis.")
+        raw_bytes = base64.b64decode(encoded)
+        return pd.read_parquet(io.BytesIO(raw_bytes))
+    else:
+        path = _fs_path(dataset_id)
+        if not os.path.exists(path):
+            raise DatasetNotFoundError(f"Dataset {dataset_id} not found.")
+        return pd.read_parquet(path)
 
 
 def overwrite_dataframe(dataset_id: str, df: pd.DataFrame) -> None:
-    df.to_parquet(_path_for(dataset_id), index=False)
+    r = _redis_client()
+
+    if r is not None:
+        buf = io.BytesIO()
+        df.to_parquet(buf, index=False)
+        encoded = base64.b64encode(buf.getvalue()).decode("ascii")
+        r.set(_df_key(dataset_id), encoded, ex=settings.dataset_ttl_seconds)
+    else:
+        _ensure_dirs()
+        df.to_parquet(_fs_path(dataset_id), index=False)
 
 
 def dataset_exists(dataset_id: str) -> bool:
-    return os.path.exists(_path_for(dataset_id))
+    r = _redis_client()
 
+    if r is not None:
+        return r.exists(_df_key(dataset_id)) == 1
+    else:
+        return os.path.exists(_fs_path(dataset_id))
+
+
+# ---------------------------------------------------------------------------
+# EDA cache
+# ---------------------------------------------------------------------------
 
 def save_eda_cache(dataset_id: str, eda_data: dict) -> None:
-    path = os.path.join(settings.reports_dir, f"{dataset_id}_eda.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(eda_data, f, ensure_ascii=False, indent=2)
+    r = _redis_client()
+
+    if r is not None:
+        r.set(_eda_key(dataset_id), json.dumps(eda_data, ensure_ascii=False), ex=settings.dataset_ttl_seconds)
+    else:
+        _ensure_dirs()
+        path = os.path.join(settings.reports_dir, f"{dataset_id}_eda.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(eda_data, f, ensure_ascii=False, indent=2)
 
 
 def load_eda_cache(dataset_id: str) -> dict | None:
-    path = os.path.join(settings.reports_dir, f"{dataset_id}_eda.json")
-    if os.path.exists(path):
+    r = _redis_client()
+
+    if r is not None:
+        raw = r.get(_eda_key(dataset_id))
+        if raw is None:
+            return None
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+            return json.loads(raw)
         except Exception:
             return None
-    return None
+    else:
+        path = os.path.join(settings.reports_dir, f"{dataset_id}_eda.json")
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                return None
+        return None
 
+
+# ---------------------------------------------------------------------------
+# Summary cache
+# ---------------------------------------------------------------------------
 
 def save_summary_cache(dataset_id: str, summary_data: dict) -> None:
-    path = os.path.join(settings.reports_dir, f"{dataset_id}_summary.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(summary_data, f, ensure_ascii=False, indent=2)
+    r = _redis_client()
+
+    if r is not None:
+        r.set(_summary_key(dataset_id), json.dumps(summary_data, ensure_ascii=False), ex=settings.dataset_ttl_seconds)
+    else:
+        _ensure_dirs()
+        path = os.path.join(settings.reports_dir, f"{dataset_id}_summary.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(summary_data, f, ensure_ascii=False, indent=2)
 
 
 def load_summary_cache(dataset_id: str) -> dict | None:
-    path = os.path.join(settings.reports_dir, f"{dataset_id}_summary.json")
-    if os.path.exists(path):
+    r = _redis_client()
+
+    if r is not None:
+        raw = r.get(_summary_key(dataset_id))
+        if raw is None:
+            return None
         try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
+            return json.loads(raw)
         except Exception:
             return None
-    return None
-
+    else:
+        path = os.path.join(settings.reports_dir, f"{dataset_id}_summary.json")
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                return None
+        return None

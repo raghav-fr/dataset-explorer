@@ -1,22 +1,36 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 venv/
 .venv/
 *.egg-info/
+.eggs/
 
-# Env
+# Environment — NEVER commit secrets
 .env
+.env.local
+.env.*.local
 
 # Node
 node_modules/
 dist/
 .vite/
 
-# Data
-backend/app/storage/datasets/*.parquet
-backend/app/storage/reports/*
+# Data storage (local FS fallback)
+backend/app/storage/datasets/
+backend/app/storage/reports/
+backend/app/storage/
+
+# Vercel local cache
+.vercel/
 
 # OS
 .DS_Store
-backend/app/storage
+Thumbs.db
+
+# Logs (PythonAnywhere server logs checked in accidentally — exclude going forward)
+*.access.log
+*.error.log
+*.server.log

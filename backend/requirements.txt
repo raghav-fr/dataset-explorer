@@ -1,18 +1,36 @@
+
+# --- Core API ---
 fastapi
-a2wsgi
 uvicorn[standard]
 python-multipart
+pydantic
+pydantic-settings
+python-dotenv
+
+# --- Data processing ---
 chardet
 pandas
 numpy
 openpyxl
 pyarrow
-pydantic
-pydantic-settings
-python-dotenv
+
+# --- AI / LLM ---
 tenacity
-loguru
 requests
+json-repair
+
+# --- Visualization ---
 matplotlib
 seaborn
-json-repair
+
+# --- Vercel deployment (ASGI adapter for serverless) ---
+mangum
+
+# --- Serverless storage (Upstash Redis HTTP client — no binary deps) ---
+upstash-redis
+
+# --- PythonAnywhere / WSGI deployment (wsgi.py uses this) ---
+a2wsgi
+
+# --- Logging ---
+loguru
