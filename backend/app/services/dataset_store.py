@@ -65,13 +65,29 @@ def _summary_key(dataset_id: str) -> str:
 # Filesystem helpers
 # ---------------------------------------------------------------------------
 
+def _writable_path(path: str) -> str:
+    """
+    On Vercel (and any Lambda-like environment), only /tmp is writable.
+    If the configured path is relative (e.g. 'app/storage/datasets'),
+    remap it to /tmp/<path> so it lands in the writable temp filesystem.
+    Absolute paths that already start with /tmp are returned as-is.
+    """
+    if os.path.isabs(path):
+        return path
+    # Relative path → put it under /tmp
+    return os.path.join("/tmp", path)
+
+
 def _ensure_dirs():
-    os.makedirs(settings.storage_dir, exist_ok=True)
-    os.makedirs(settings.reports_dir, exist_ok=True)
+    storage = _writable_path(settings.storage_dir)
+    reports = _writable_path(settings.reports_dir)
+    os.makedirs(storage, exist_ok=True)
+    os.makedirs(reports, exist_ok=True)
+    return storage, reports
 
 
 def _fs_path(dataset_id: str) -> str:
-    return os.path.join(settings.storage_dir, f"{dataset_id}.parquet")
+    return os.path.join(_writable_path(settings.storage_dir), f"{dataset_id}.parquet")
 
 
 # ---------------------------------------------------------------------------
@@ -90,8 +106,9 @@ def save_dataframe(df: pd.DataFrame) -> str:
         logger.info(f"Saved dataset {dataset_id} to Redis ({len(encoded)} bytes b64).")
     else:
         _ensure_dirs()
-        df.to_parquet(_fs_path(dataset_id), index=False)
-        logger.info(f"Saved dataset {dataset_id} to filesystem.")
+        path = _fs_path(dataset_id)
+        df.to_parquet(path, index=False)
+        logger.info(f"Saved dataset {dataset_id} to filesystem at {path}.")
 
     return dataset_id
 
@@ -108,7 +125,7 @@ def load_dataframe(dataset_id: str) -> pd.DataFrame:
     else:
         path = _fs_path(dataset_id)
         if not os.path.exists(path):
-            raise DatasetNotFoundError(f"Dataset {dataset_id} not found.")
+            raise DatasetNotFoundError(f"Dataset {dataset_id} not found at {path}.")
         return pd.read_parquet(path)
 
 
@@ -145,7 +162,7 @@ def save_eda_cache(dataset_id: str, eda_data: dict) -> None:
         r.set(_eda_key(dataset_id), json.dumps(eda_data, ensure_ascii=False), ex=settings.dataset_ttl_seconds)
     else:
         _ensure_dirs()
-        path = os.path.join(settings.reports_dir, f"{dataset_id}_eda.json")
+        path = os.path.join(_writable_path(settings.reports_dir), f"{dataset_id}_eda.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(eda_data, f, ensure_ascii=False, indent=2)
 
@@ -162,7 +179,7 @@ def load_eda_cache(dataset_id: str) -> dict | None:
         except Exception:
             return None
     else:
-        path = os.path.join(settings.reports_dir, f"{dataset_id}_eda.json")
+        path = os.path.join(_writable_path(settings.reports_dir), f"{dataset_id}_eda.json")
         if os.path.exists(path):
             try:
                 with open(path, "r", encoding="utf-8") as f:
@@ -183,7 +200,7 @@ def save_summary_cache(dataset_id: str, summary_data: dict) -> None:
         r.set(_summary_key(dataset_id), json.dumps(summary_data, ensure_ascii=False), ex=settings.dataset_ttl_seconds)
     else:
         _ensure_dirs()
-        path = os.path.join(settings.reports_dir, f"{dataset_id}_summary.json")
+        path = os.path.join(_writable_path(settings.reports_dir), f"{dataset_id}_summary.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(summary_data, f, ensure_ascii=False, indent=2)
 
@@ -200,7 +217,7 @@ def load_summary_cache(dataset_id: str) -> dict | None:
         except Exception:
             return None
     else:
-        path = os.path.join(settings.reports_dir, f"{dataset_id}_summary.json")
+        path = os.path.join(_writable_path(settings.reports_dir), f"{dataset_id}_summary.json")
         if os.path.exists(path):
             try:
                 with open(path, "r", encoding="utf-8") as f:
