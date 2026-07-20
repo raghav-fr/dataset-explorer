@@ -3,7 +3,7 @@ import axios from "axios";
 // On Vercel, the frontend and backend share the same origin (e.g. myapp.vercel.app).
 // Using an empty string means all /api/* calls are same-origin — no CORS needed.
 // Override via VITE_API_BASE_URL env var if deploying frontend and backend separately.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://dataset-explorer-three.vercel.app";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://dataset-explorer-two.vercel.app/";
 
 const client = axios.create({ baseURL: API_BASE_URL });
 
