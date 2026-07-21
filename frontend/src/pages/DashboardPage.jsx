@@ -234,14 +234,14 @@ function Dashboard() {
   const other = custom.filter((a) => a?.type !== "bivariate" && a?.type !== "multivariate");
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto w-full">
       {/* header row */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
         <div>
           <p className="font-mono text-xs uppercase tracking-widest text-amber-400 mb-1">
             Step 2 of 3
           </p>
-          <h1 className="text-2xl font-semibold">{dataset.filename}</h1>
+          <h1 className="text-xl md:text-2xl font-semibold break-words">{dataset.filename}</h1>
           <p className="text-ink-300 text-sm mt-1">
             {dataset.rows.toLocaleString()} rows &middot; {dataset.columns} columns
           </p>
