@@ -48,7 +48,7 @@ export default function UploadPage() {
     <div className="h-full flex flex-col items-center justify-center px-6">
       <div className="max-w-xl w-full">
         <p className="font-mono text-xs uppercase tracking-widest text-amber-400 mb-2">
-          Step 1 of 3
+          Step 1 of 2
         </p>
         <h1 className="text-2xl font-semibold mb-2">Upload a dataset</h1>
         <p className="text-ink-300 text-sm mb-8">

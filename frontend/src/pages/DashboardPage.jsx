@@ -239,7 +239,7 @@ function Dashboard() {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
         <div>
           <p className="font-mono text-xs uppercase tracking-widest text-amber-400 mb-1">
-            Step 2 of 3
+            Step 2 of 2
           </p>
           <h1 className="text-xl md:text-2xl font-semibold break-words">{dataset.filename}</h1>
           <p className="text-ink-300 text-sm mt-1">
